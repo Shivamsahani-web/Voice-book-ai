@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Voice Book AI</title>
+<meta name="theme-color" content="#0B0B14" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icon.png" type="image/png" />
+<link rel="apple-touch-icon" href="/icon.png" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+  :root {
+    --bg: #0B0B14;
+    --card: #14141F;
+    --border: #262636;
+    --ink: #F1EFFA;
+    --muted: #8B88A3;
+    --p1: #7C3AED;
+    --p2: #2563EB;
+    --p1-bg: rgba(124,58,237,0.12);
+    --ok: #22C55E;
+    --err: #F87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Inter', sans-serif; padding-bottom: 50px;
+  }
+  .display { font-family: 'Poppins', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .wrap { max-width: 580px; margin: 0 auto; padding: 0 18px; }
+  .grad-text {
+    background: linear-gradient(90deg, var(--p1), var(--p2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 20px; }
+  .btn-primary {
+    width: 100%; padding: 16px 18px; border-radius: 14px; border: none;
+    background: linear-gradient(90deg, var(--p1), var(--p2)); color: #fff; font-weight: 700; font-size: 15px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-secondary {
+    padding: 13px 16px; border-radius: 12px; border: 1.5px solid var(--border); background: transparent;
+    color: var(--ink); font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+  .chip {
+    padding: 9px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .chip.active { border-color: transparent; background: linear-gradient(90deg, var(--p1), var(--p2)); color: #fff; }
+  .field-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 1.1px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 9px; font-weight: 600;
+  }
+  textarea, select {
+    width: 100%; background: #0F0F1A; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 13px 14px; color: var(--ink); font-family: 'Inter', sans-serif; font-size: 14.5px; outline: none;
+  }
+  textarea { min-height: 160px; line-height: 1.6; resize: vertical; }
+  textarea:focus, select:focus { border-color: var(--p1); }
+  select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B88A3' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; display:inline-block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px);} to {opacity:1; transform:translateY(0);} }
+  .fade { animation: fadeIn 0.25s ease; }
+  @keyframes wave { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+  .wave-bar { width: 4px; border-radius: 2px; background: linear-gradient(180deg, var(--p1), var(--p2)); animation: wave 1s ease-in-out infinite; }
+  audio { width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="wrap" style="padding-top:30px; padding-bottom:18px; display:flex; align-items:center; gap:10px;">
+  <img src="/icon.png" width="38" height="38" style="border-radius:10px;" />
+  <div>
+    <div class="display grad-text" style="font-size:20px; font-weight:800;">Voice Book AI</div>
+    <div style="color:var(--muted); font-size:11.5px;">Read less. Learn more. Listen anywhere.</div>
+  </div>
+</div>
+
+<!-- SCREEN: INPUT -->
+<div id="screen-input" class="wrap fade">
+
+  <div class="card" style="margin-bottom:14px;">
+    <div class="field-label">Content Kaise Doge?</div>
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button id="modeTextBtn" class="chip active" style="flex:1;">✍️ Text Likho</button>
+      <button id="modeImageBtn" class="chip" style="flex:1;">📷 Photo/PDF</button>
+    </div>
+
+    <div id="uploadArea" style="display:none;">
+      <div id="dropZone" style="border:2px dashed var(--border); border-radius:12px; padding:24px 16px; text-align:center; cursor:pointer;">
+        <div id="dropZoneEmpty">
+          <div style="font-size:26px; margin-bottom:6px;">📄</div>
+          <div style="font-weight:600; font-size:14px;">Tap karke book page ki photo ya PDF chuno</div>
+          <div style="color:var(--muted); font-size:12px; margin-top:5px;">JPG, PNG, WEBP, PDF · Max 4MB</div>
+        </div>
+        <div id="dropZoneFile" style="display:none; text-align:left;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px;">✅</span>
+            <div style="flex:1; min-width:0;">
+              <div id="fileName" style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            </div>
+            <button id="removeFileBtn" class="btn-secondary" style="padding:6px 10px; font-size:12px;">Hatao</button>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,application/pdf" style="display:none;" />
+      <button id="extractBtn" class="btn-secondary" style="width:100%; margin-top:12px;" disabled>Text Nikaalo Photo Se</button>
+      <p id="extractStatus" style="font-size:12.5px; color:var(--muted); margin:10px 0 0; display:none;"></p>
+    </div>
+
+    <div id="textArea">
+      <textarea id="textInput" placeholder="Yahan apna text paste ya type karo — Hindi ya English, jo bhi ho... (lagbhag 2-3 page tak ek baar mein)"></textarea>
+      <div style="display:flex; justify-content:space-between; margin-top:6px;">
+        <span id="charCount" class="mono" style="font-size:11px; color:var(--muted);">0 characters</span>
+        <span id="charWarning" class="mono" style="font-size:11px; color:var(--err); display:none;">Bahut lamba hai — thoda chhota karo</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="field-label">Voice Chuno</div>
+    <select id="voiceSelect">
+      <optgroup label="Male Voices">
+        <option value="Puck" selected>Puck — Upbeat</option>
+        <option value="Charon">Charon — Informative</option>
+        <option value="Fenrir">Fenrir — Excitable</option>
+      </optgroup>
+      <optgroup label="Female Voices">
+        <option value="Kore">Kore — Firm</option>
+        <option value="Aoede">Aoede — Breezy</option>
+        <option value="Leda">Leda — Youthful</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <button id="generateBtn" class="btn-primary" disabled>🔊 Voice Generate Karo</button>
+  <p id="setupError" style="color:var(--err); font-size:13px; margin-top:12px; text-align:center; display:none;"></p>
+</div>
+
+<!-- SCREEN: LOADING -->
+<div id="screen-loading" class="wrap fade" style="display:none; text-align:center; padding-top:60px;">
+  <div style="display:flex; justify-content:center; gap:5px; height:40px; align-items:center; margin-bottom:22px;">
+    <div class="wave-bar" style="height:16px; animation-delay:0s;"></div>
+    <div class="wave-bar" style="height:32px; animation-delay:0.15s;"></div>
+    <div class="wave-bar" style="height:24px; animation-delay:0.3s;"></div>
+    <div class="wave-bar" style="height:38px; animation-delay:0.45s;"></div>
+    <div class="wave-bar" style="height:20px; animation-delay:0.6s;"></div>
+  </div>
+  <div id="loadingText" class="display" style="font-size:16px; font-weight:700; margin-bottom:8px;">Awaaz taiyaar ki jaa rahi hai...</div>
+  <div style="color:var(--muted); font-size:13px;">Thoda intezaar karo</div>
+</div>
+
+<!-- SCREEN: PLAYER -->
+<div id="screen-player" class="wrap fade" style="display:none;">
+  <div class="card" style="text-align:center; margin-bottom:16px;">
+    <div style="font-size:36px; margin-bottom:10px;">🎧</div>
+    <div class="display" style="font-size:17px; font-weight:700; margin-bottom:4px;">Tumhari Audio Ready Hai</div>
+    <div id="audioDuration" class="mono" style="color:var(--muted); font-size:12.5px; margin-bottom:16px;"></div>
+    <audio id="audioPlayer" controls></audio>
+    <div style="display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+      <button class="chip speed-chip" data-speed="0.75">0.75x</button>
+      <button class="chip speed-chip active" data-speed="1">1x</button>
+      <button class="chip speed-chip" data-speed="1.25">1.25x</button>
+      <button class="chip speed-chip" data-speed="1.5">1.5x</button>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:10px;">
+    <button id="downloadBtn" class="btn-secondary" style="flex:1;">⬇️ Download</button>
+    <button id="newAudioBtn" class="btn-primary" style="flex:1; margin-top:0;">+ Naya Banao</button>
+  </div>
+</div>
+
+<script>
+const state = {
+  mode: "text",
+  extractedFile: null, extractedFileBase64: null, extractedFileMime: null,
+  voice: "Puck",
+  audioChunksBase64: [],
+};
+
+const MAX_CHARS = 12000;
+const CHUNK_SIZE = 2200;
+
+function showScreen(name) {
+  ["input","loading","player"].forEach(s => {
+    document.getElementById("screen-" + s).style.display = (s === name) ? "block" : "none";
+  });
+}
+
+// Mode toggle
+const modeTextBtn = document.getElementById("modeTextBtn");
+const modeImageBtn = document.getElementById("modeImageBtn");
+const uploadArea = document.getElementById("uploadArea");
+const textArea = document.getElementById("textArea");
+
+modeTextBtn.addEventListener("click", () => {
+  state.mode = "text";
+  modeTextBtn.classList.add("active"); modeImageBtn.classList.remove("active");
+  uploadArea.style.display = "none"; textArea.style.display = "block";
+});
+modeImageBtn.addEventListener("click", () => {
+  state.mode = "image";
+  modeImageBtn.classList.add("active"); modeTextBtn.classList.remove("active");
+  uploadArea.style.display = "block"; textArea.style.display = "block";
+});
+
+// File handling
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const extractBtn = document.getElementById("extractBtn");
+const extractStatus = document.getElementById("extractStatus");
+
+dropZone.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => {
+  if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+});
+document.getElementById("removeFileBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  state.extractedFile = null; state.extractedFileBase64 = null;
+  document.getElementById("dropZoneEmpty").style.display = "block";
+  document.getElementById("dropZoneFile").style.display = "none";
+  extractBtn.disabled = true;
+});
+
+function handleFile(file) {
+  const allowed = ["image/png","image/jpeg","image/webp","application/pdf"];
+  if (!allowed.includes(file.type)) { alert("Sirf PDF, JPG, PNG, ya WEBP allowed hai."); return; }
+  if (file.size > 4 * 1024 * 1024) { alert("File 4MB se choti honi chahiye."); return; }
+  state.extractedFileMime = file.type;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.extractedFileBase64 = reader.result.split(",")[1];
+    document.getElementById("fileName").textContent = file.name;
+    document.getElementById("dropZoneEmpty").style.display = "none";
+    document.getElementById("dropZoneFile").style.display = "block";
+    extractBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+extractBtn.addEventListener("click", async () => {
+  extractBtn.disabled = true;
+  extractStatus.style.display = "block";
+  extractStatus.textContent = "Photo se text nikaala jaa raha hai...";
+  try {
+    const res = await fetch("/api/extract-text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileBase64: state.extractedFileBase64, mimeType: state.extractedFileMime }),
+    });
+    if (!res.ok) throw new Error("failed");
+    const data = await res.json();
+    const textInput = document.getElementById("textInput");
+    textInput.value = (textInput.value ? textInput.value + "\n\n" : "") + (data.text || "");
+    updateCharCount();
+    extractStatus.textContent = "✅ Text nikal gaya! Neeche check karke edit kar sakte ho.";
+  } catch (e) {
+    extractStatus.textContent = "❌ Text nahi nikal paaya. Dobara try karo.";
+  } finally {
+    extractBtn.disabled = false;
+  }
+});
+
+// Text input
+const textInput = document.getElementById("textInput");
+const charCount = document.getElementById("charCount");
+const charWarning = document.getElementById("charWarning");
+const generateBtn = document.getElementById("generateBtn");
+
+function updateCharCount() {
+  const len = textInput.value.length;
+  charCount.textContent = `${len} characters`;
+  const tooLong = len > MAX_CHARS;
+  charWarning.style.display = tooLong ? "inline" : "none";
+  generateBtn.disabled = len === 0 || tooLong;
+}
+textInput.addEventListener("input", updateCharCount);
+
+// Voice select
+document.getElementById("voiceSelect").addEventListener("change", (e) => {
+  state.voice = e.target.value;
+});
+
+// Chunking: split by paragraph/sentence, respecting CHUNK_SIZE
+function splitIntoChunks(text) {
+  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim());
+  const chunks = [];
+  let current = "";
+  for (const para of paragraphs) {
+    if ((current + "\n\n" + para).length > CHUNK_SIZE && current) {
+      chunks.push(current.trim());
+      current = para;
+    } else {
+      current = current ? current + "\n\n" + para : para;
+    }
+    while (current.length > CHUNK_SIZE) {
+      let cut = current.lastIndexOf(". ", CHUNK_SIZE);
+      if (cut < CHUNK_SIZE * 0.5) cut = CHUNK_SIZE;
+      chunks.push(current.slice(0, cut + 1).trim());
+      current = current.slice(cut + 1).trim();
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text];
+}
+
+// WAV encoding from raw PCM (16-bit, 24000Hz, mono)
+function pcmToWav(pcmBytes, sampleRate = 24000) {
+  const numChannels = 1, bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+  const blockAlign = numChannels * bitsPerSample / 8;
+  const dataSize = pcmBytes.length;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  function writeStr(offset, str) { for (let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); }
+  writeStr(0, "RIFF"); view.setUint32(4, 36 + dataSize, true); writeStr(8, "WAVE");
+  writeStr(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true); view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true); view.setUint16(32, blockAlign, true); view.setUint16(34, bitsPerSample, true);
+  writeStr(36, "data"); view.setUint32(40, dataSize, true);
+  new Uint8Array(buffer, 44).set(pcmBytes);
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+let finalAudioBlob = null;
+
+generateBtn.addEventListener("click", async () => {
+  const text = textInput.value.trim();
+  if (!text) return;
+  const setupError = document.getElementById("setupError");
+  setupError.style.display = "none";
+  showScreen("loading");
+
+  const chunks = splitIntoChunks(text);
+  const loadingText = document.getElementById("loadingText");
+  const pcmParts = [];
+
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      loadingText.textContent = chunks.length > 1
+        ? `Hissa ${i+1} / ${chunks.length} ki awaaz ban rahi hai...`
+        : "Awaaz taiyaar ki jaa rahi hai...";
+      const res = await fetch("/api/generate-voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: chunks[i], voice: state.voice }),
+      });
+      if (!res.ok) throw new Error("chunk failed");
+      const data = await res.json();
+      pcmParts.push(base64ToBytes(data.audioBase64));
+    }
+
+    const totalLength = pcmParts.reduce((sum, arr) => sum + arr.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const part of pcmParts) { combined.set(part, offset); offset += part.length; }
+
+    finalAudioBlob = pcmToWav(combined);
+    const url = URL.createObjectURL(finalAudioBlob);
+    const audioPlayer = document.getElementById("audioPlayer");
+    audioPlayer.src = url;
+
+    audioPlayer.onloadedmetadata = () => {
+      const mins = Math.floor(audioPlayer.duration / 60);
+      const secs = Math.floor(audioPlayer.duration % 60).toString().padStart(2,"0");
+      document.getElementById("audioDuration").textContent = `Duration: ${mins}:${secs}`;
+    };
+
+    showScreen("player");
+  } catch (e) {
+    showScreen("input");
+    setupError.textContent = "Audio generate nahi ho paaya. Text chhota karke dobara try karo.";
+    setupError.style.display = "block";
+  }
+});
+
+// Speed control
+document.querySelectorAll(".speed-chip").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".speed-chip").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("audioPlayer").playbackRate = parseFloat(btn.dataset.speed);
+  });
+});
+
+document.getElementById("downloadBtn").addEventListener("click", () => {
+  if (!finalAudioBlob) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(finalAudioBlob);
+  a.download = "voice-book-audio.wav";
+  a.click();
+});
+
+document.getElementById("newAudioBtn").addEventListener("click", () => {
+  textInput.value = "";
+  updateCharCount();
+  showScreen("input");
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
+</script>
+</body>
+</html>

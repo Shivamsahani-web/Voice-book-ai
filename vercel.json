@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/generate-voice.js": {
+      "maxDuration": 60
+    },
+    "api/extract-text.js": {
+      "maxDuration": 60
+    }
+  }
+}
