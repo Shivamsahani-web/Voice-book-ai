@@ -352,14 +352,33 @@ generateBtn.addEventListener("click", async () => {
       loadingText.textContent = chunks.length > 1
         ? `Hissa ${i+1} / ${chunks.length} ki awaaz ban rahi hai...`
         : "Awaaz taiyaar ki jaa rahi hai...";
-      const res = await fetch("/api/generate-voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: chunks[i], voice: state.voice }),
-      });
-      if (!res.ok) throw new Error("chunk failed");
-      const data = await res.json();
-      pcmParts.push(base64ToBytes(data.audioBase64));
+
+      let success = false;
+      let lastError = null;
+      for (let attempt = 1; attempt <= 3 && !success; attempt++) {
+        try {
+          if (attempt > 1) {
+            loadingText.textContent = `Hissa ${i+1} / ${chunks.length} — dobara try kar rahe hain (${attempt}/3)...`;
+            await new Promise(r => setTimeout(r, 1500 * attempt));
+          }
+          const res = await fetch("/api/generate-voice", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: chunks[i], voice: state.voice }),
+          });
+          if (!res.ok) throw new Error("chunk failed with status " + res.status);
+          const data = await res.json();
+          if (!data.audioBase64) throw new Error("no audio in response");
+          pcmParts.push(base64ToBytes(data.audioBase64));
+          success = true;
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (!success) throw lastError || new Error("chunk permanently failed");
+
+      if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 400));
+  }
     }
 
     const totalLength = pcmParts.reduce((sum, arr) => sum + arr.length, 0);
