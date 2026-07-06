@@ -378,7 +378,6 @@ generateBtn.addEventListener("click", async () => {
       if (!success) throw lastError || new Error("chunk permanently failed");
 
       if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 400));
-  }
     }
 
     const totalLength = pcmParts.reduce((sum, arr) => sum + arr.length, 0);
@@ -433,4 +432,4 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
-</html>
+  </html>
